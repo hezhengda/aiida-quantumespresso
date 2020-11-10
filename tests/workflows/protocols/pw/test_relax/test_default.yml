@@ -3,6 +3,12 @@ base:
   kpoints_force_parity: false
   pw:
     code: test.quantumespresso.pw@localhost-test
+    metadata:
+      options:
+        max_wallclock_seconds: 1800
+        resources:
+          num_machines: 1
+        withmpi: true
     parameters:
       CONTROL:
         calculation: scf
@@ -28,6 +34,12 @@ base_final_scf:
   kpoints_force_parity: false
   pw:
     code: test.quantumespresso.pw@localhost-test
+    metadata:
+      options:
+        max_wallclock_seconds: 1800
+        resources:
+          num_machines: 1
+        withmpi: true
     parameters:
       CONTROL:
         calculation: scf

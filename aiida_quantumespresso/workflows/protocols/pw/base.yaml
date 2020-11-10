@@ -6,6 +6,12 @@ base:
         conv_thr_per_atom: 0.2e-9
         etot_conv_thr_per_atom: 1.e-5
         starting_magnetization: 0.1
+    metadata:
+        options:
+            resources:
+                num_machines: 1
+            max_wallclock_seconds: 1800
+            withmpi: True
     pseudo_family: 'SSSP/1.1/PBE/efficiency'
     pw:
         parameters:
