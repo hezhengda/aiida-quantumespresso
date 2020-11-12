@@ -95,6 +95,30 @@ class PwRelaxWorkChain(WorkChain):
         spec.output('output_structure', valid_type=orm.StructureData, required=False,
             help='The successfully relaxed structure, unless `relax_type is RelaxType.NONE`.')
 
+    @classmethod
+    def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol."""
+        from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
+
+        builder = cls.get_builder()
+        inputs = get_protocol_inputs(cls, protocol)
+
+        overrides = overrides.get('base', None) if overrides else None
+        base = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=overrides)
+        base['pw'].pop('structure', None)
+        base.pop('clean_workdir', None)
+
+        builder.base = base
+        builder.base_final_scf = base
+        builder.structure = structure
+        builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
+        builder.max_meta_convergence_iterations = orm.Int(inputs['max_meta_convergence_iterations'])
+        builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
+        builder.relaxation_scheme = orm.Str(inputs['relaxation_scheme'])
+        builder.volume_convergence = orm.Float(inputs['volume_convergence'])
+
+        return builder
+
     def setup(self):
         """Input validation and context setup."""
         self.ctx.current_number_of_bands = None

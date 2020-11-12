@@ -109,6 +109,38 @@ class PwBandsWorkChain(WorkChain):
         spec.output('band_structure', valid_type=orm.BandsData,
             help='The computed band structure.')
 
+    @classmethod
+    def get_builder_from_protocol(cls, code, structure, protocol=None):
+        """Return a builder prepopulated with inputs selected according to the chosen protocol."""
+        from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
+
+        builder = cls.get_builder()
+        inputs = get_protocol_inputs(cls, protocol)
+
+        relax = PwRelaxWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=inputs['relax'])
+        scf = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol)
+        bands = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol)
+
+        relax.pop('structure', None)
+        relax.pop('clean_workdir', None)
+        relax.pop('base_final_scf', None)
+        scf['pw'].pop('structure', None)
+        scf.pop('clean_workdir', None)
+        bands['pw'].pop('structure', None)
+        bands.pop('clean_workdir', None)
+        bands.pop('kpoints_distance', None)
+        bands.pop('kpoints_force_parity', None)
+
+        builder.structure = structure
+        builder.relax = relax
+        builder.scf = scf
+        builder.bands = bands
+        builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
+        builder.nbands_factor = orm.Float(inputs['nbands_factor'])
+        builder.bands_kpoints_distance = orm.Float(inputs['bands_kpoints_distance'])
+
+        return builder
+
     def setup(self):
         """Define the current structure in the context to be the input structure."""
         self.ctx.current_structure = self.inputs.structure
