@@ -115,7 +115,7 @@ class PwRelaxWorkChain(WorkChain):
         return get_available_protocols(cls)
 
     @classmethod
-    def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None):
+    def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None, **kwargs):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
 
@@ -123,7 +123,7 @@ class PwRelaxWorkChain(WorkChain):
         inputs = get_protocol_inputs(cls, protocol)
 
         overrides = overrides.get('base', None) if overrides else None
-        base = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=overrides)
+        base = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=overrides, **kwargs)
         base['pw'].pop('structure', None)
         base.pop('clean_workdir', None)
 

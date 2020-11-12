@@ -2,10 +2,12 @@
 """Workchain to run a Quantum ESPRESSO pw.x calculation with automated error handling and restarts."""
 from aiida import orm
 from aiida.common import AttributeDict, exceptions
+from aiida.common.lang import type_check
 from aiida.engine import ToContext, if_, while_, BaseRestartWorkChain, process_handler, ProcessHandlerReport, ExitCode
 from aiida.plugins import CalculationFactory, GroupFactory
 
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import create_kpoints_from_distance
+from aiida_quantumespresso.common.types import ElectronicType
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
 from aiida_quantumespresso.utils.mapping import update_mapping, prepare_process_inputs
 from aiida_quantumespresso.utils.pseudopotential import validate_and_prepare_pseudos_inputs
@@ -130,9 +132,21 @@ class PwBaseWorkChain(BaseRestartWorkChain):
         return get_available_protocols(cls)
 
     @classmethod
-    def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None):
+    def get_builder_from_protocol(
+        cls,
+        code,
+        structure,
+        protocol=None,
+        overrides=None,
+        electronic_type=ElectronicType.METAL
+    ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
+
+        type_check(electronic_type, ElectronicType)
+
+        if electronic_type not in [ElectronicType.METAL, ElectronicType.INSULATOR]:
+            raise NotImplementedError(f'the electronic type `{electronic_type}` is not supported.')
 
         builder = cls.get_builder()
         inputs = get_protocol_inputs(cls, protocol, overrides)
@@ -155,6 +169,11 @@ class PwBaseWorkChain(BaseRestartWorkChain):
         parameters['ELECTRONS']['conv_thr'] = natoms * meta_parameters['conv_thr_per_atom']
         parameters['SYSTEM']['ecutwfc'] = cutoffs[0]
         parameters['SYSTEM']['ecutrho'] = cutoffs[1]
+
+        if electronic_type is ElectronicType.INSULATOR:
+            parameters['SYSTEM']['occupations'] = 'fixed'
+            parameters['SYSTEM'].pop('degauss')
+            parameters['SYSTEM'].pop('smearing')
 
         builder.pw['code'] = code  # pylint: disable=no-member
         builder.pw['pseudos'] = pseudo_family.get_pseudos(structure=structure)  # pylint: disable=no-member

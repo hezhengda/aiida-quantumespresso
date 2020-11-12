@@ -129,16 +129,17 @@ class PwBandsWorkChain(WorkChain):
         return get_available_protocols(cls)
 
     @classmethod
-    def get_builder_from_protocol(cls, code, structure, protocol=None):
+    def get_builder_from_protocol(cls, code, structure, protocol=None, **kwargs):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
 
         builder = cls.get_builder()
         inputs = get_protocol_inputs(cls, protocol)
 
-        relax = PwRelaxWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=inputs['relax'])
-        scf = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol)
-        bands = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol)
+        overrides = inputs['relax']
+        relax = PwRelaxWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=overrides, **kwargs)
+        scf = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, **kwargs)
+        bands = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, **kwargs)
 
         relax.pop('structure', None)
         relax.pop('clean_workdir', None)
