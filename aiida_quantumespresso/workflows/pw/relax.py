@@ -96,6 +96,25 @@ class PwRelaxWorkChain(WorkChain):
             help='The successfully relaxed structure, unless `relax_type is RelaxType.NONE`.')
 
     @classmethod
+    def get_default_protocol(cls):
+        """Return the default protocol.
+
+        :return: name of the default protocol.
+        """
+        from aiida_quantumespresso.workflows.protocols.utils import get_default_protocol
+        return get_default_protocol(cls)
+
+    @classmethod
+    def get_available_protocols(cls):
+        """Return the dictionary of available protocols.
+
+        :return: dictionary of available protocols, where each key is a protocol and value is another dictionary that
+            contains at least the key `description` and optionally other keys with supplementary information.
+        """
+        from aiida_quantumespresso.workflows.protocols.utils import get_available_protocols
+        return get_available_protocols(cls)
+
+    @classmethod
     def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
