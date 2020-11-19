@@ -7,7 +7,7 @@ from aiida.engine import ToContext, if_, while_, BaseRestartWorkChain, process_h
 from aiida.plugins import CalculationFactory, GroupFactory
 
 from aiida_quantumespresso.calculations.functions.create_kpoints_from_distance import create_kpoints_from_distance
-from aiida_quantumespresso.common.types import ElectronicType
+from aiida_quantumespresso.common.types import ElectronicType, SpinType
 from aiida_quantumespresso.utils.defaults.calculation import pw as qe_defaults
 from aiida_quantumespresso.utils.mapping import update_mapping, prepare_process_inputs
 from aiida_quantumespresso.utils.pseudopotential import validate_and_prepare_pseudos_inputs
@@ -138,15 +138,28 @@ class PwBaseWorkChain(BaseRestartWorkChain):
         structure,
         protocol=None,
         overrides=None,
-        electronic_type=ElectronicType.METAL
+        electronic_type=ElectronicType.METAL,
+        spin_type=SpinType.NONE,
+        initial_magnetization=None,
     ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
-        from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
+        from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs, get_initial_magnetization
 
+        if isinstance(code, str):
+            code = orm.load_code(code)
+
+        type_check(code, orm.Code)
         type_check(electronic_type, ElectronicType)
+        type_check(spin_type, SpinType)
 
         if electronic_type not in [ElectronicType.METAL, ElectronicType.INSULATOR]:
-            raise NotImplementedError(f'the electronic type `{electronic_type}` is not supported.')
+            raise NotImplementedError(f'electronic type `{electronic_type}` is not supported.')
+
+        if spin_type not in [SpinType.NONE, SpinType.COLLINEAR]:
+            raise NotImplementedError(f'spin type `{spin_type}` is not supported.')
+
+        if initial_magnetization is not None and spin_type is not SpinType.COLLINEAR:
+            raise ValueError(f'`initial_magnetization` is specified but spin type `{spin_type}` is incompatible.')
 
         builder = cls.get_builder()
         inputs = get_protocol_inputs(cls, protocol, overrides)
@@ -155,6 +168,7 @@ class PwBaseWorkChain(BaseRestartWorkChain):
         pseudo_family = inputs.pop('pseudo_family')
 
         natoms = len(structure.sites)
+        nkinds = len(structure.kinds)
 
         try:
             types = (UpfFamily, SsspFamily)
@@ -174,6 +188,16 @@ class PwBaseWorkChain(BaseRestartWorkChain):
             parameters['SYSTEM']['occupations'] = 'fixed'
             parameters['SYSTEM'].pop('degauss')
             parameters['SYSTEM'].pop('smearing')
+
+        if spin_type is SpinType.COLLINEAR:
+            if initial_magnetization is None:
+                initial_magnetization = get_initial_magnetization(structure, pseudo_family)
+
+            if len(initial_magnetization) != nkinds:
+                raise ValueError(f'`initial_magnetization` needs one value for each of the {nkinds} kinds.')
+
+            parameters['SYSTEM']['nspin'] = 2
+            parameters['SYSTEM']['starting_magnetization'] = initial_magnetization
 
         builder.pw['code'] = code  # pylint: disable=no-member
         builder.pw['pseudos'] = pseudo_family.get_pseudos(structure=structure)  # pylint: disable=no-member
