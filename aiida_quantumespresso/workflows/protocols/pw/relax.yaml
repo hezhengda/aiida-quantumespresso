@@ -2,7 +2,7 @@ base:
     clean_workdir: True
     max_meta_convergence_iterations: 5
     meta_convergence: True
-    relaxation_scheme: vc-relax
+    relax_type: atoms_cell
     volume_convergence: 0.02
 default: moderate
 protocols:

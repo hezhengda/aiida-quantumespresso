@@ -2,6 +2,7 @@
 """Workchain to relax a structure using Quantum ESPRESSO pw.x."""
 from aiida import orm
 from aiida.common import AttributeDict, exceptions
+from aiida.common.lang import type_check
 from aiida.engine import WorkChain, ToContext, if_, while_, append_
 from aiida.plugins import CalculationFactory, WorkflowFactory
 
@@ -115,12 +116,21 @@ class PwRelaxWorkChain(WorkChain):
         return get_available_protocols(cls)
 
     @classmethod
-    def get_builder_from_protocol(cls, code, structure, protocol=None, overrides=None, **kwargs):
+    def get_builder_from_protocol(
+        cls, code, structure, protocol=None, overrides=None, relax_type=None, **kwargs
+    ):
         """Return a builder prepopulated with inputs selected according to the chosen protocol."""
         from aiida_quantumespresso.workflows.protocols.utils import get_protocol_inputs
 
+        type_check(relax_type, RelaxType, allow_none=True)
+
         builder = cls.get_builder()
-        inputs = get_protocol_inputs(cls, protocol)
+        overrides = overrides or {}
+
+        if relax_type:
+            overrides.update({'relax_type': relax_type.value})
+
+        inputs = get_protocol_inputs(cls, protocol, overrides=overrides)
 
         overrides = overrides.get('base', None) if overrides else None
         base = PwBaseWorkChain.get_builder_from_protocol(code, structure, protocol, overrides=overrides, **kwargs)
@@ -133,8 +143,10 @@ class PwRelaxWorkChain(WorkChain):
         builder.clean_workdir = orm.Bool(inputs['clean_workdir'])
         builder.max_meta_convergence_iterations = orm.Int(inputs['max_meta_convergence_iterations'])
         builder.meta_convergence = orm.Bool(inputs['meta_convergence'])
-        builder.relaxation_scheme = orm.Str(inputs['relaxation_scheme'])
         builder.volume_convergence = orm.Float(inputs['volume_convergence'])
+
+        if inputs['relax_type']:
+            builder.relax_type = orm.Str(inputs['relax_type'])
 
         return builder
 
